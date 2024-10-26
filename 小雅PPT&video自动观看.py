@@ -8,14 +8,14 @@ from selenium.common.exceptions import WebDriverException
 import keyring
 import time
 import os
+import sys
 from typing import *
 import requests
 from tqdm import tqdm
 import zipfile
-
-
 DriverType = TypeVar('DriverType', bound=webdriver.Edge)
 WaitType = TypeVar('WaitType',bound=WebDriverWait)
+
 
 
 # 这三项可以进行修改
@@ -31,7 +31,10 @@ remember_password = False
 # 5.浏览器会自动打开一个新的标签页，显示版本信息，如：版本 130.0.2849.46 (正式版本) (64 位)。
 # 接下来请进入网站https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver，下载对应版本浏览器驱动（一个msedgedriver.exe文件），并将下面的地址换成你的exe文件的地址
 
-working_path = os.path.dirname(__file__)
+if hasattr(sys,'_MEIPASS'):
+    working_path = os.getcwd()
+else:
+    working_path = os.path.dirname(__file__)
 DRIVER_PATH = os.path.join(working_path,'driver','msedgedriver.exe')
 
 
@@ -58,7 +61,7 @@ class MyScript():
                 print(f'{e}')
                 print(f'出现错误')
                 print('\n\n')
-                # time.sleep(1000000)
+                os.system('pause')
         print(f'共观看了{self.mp4}个视频')
         print(f'共观看了{self.pptx}个ppt')
 
@@ -79,6 +82,9 @@ class MyScript():
         # 检查driver文件夹是否存在
         if not os.path.exists(os.path.dirname(DRIVER_PATH)):
             os.makedirs(os.path.dirname(DRIVER_PATH))
+        # 添加说明文件
+        with open(os.path.join(os.path.dirname(DRIVER_PATH),'说明.txt'),mode='w',encoding='utf-8') as f:
+            f.write(f'此文件夹存放的是小雅自动观看脚本的driver程序，可以删除，但删除后下一次程序会花时间再次自动下载')
         
         try:
             # 检查是否存在基础的driver文件,没有则随便下载一个
