@@ -38,12 +38,22 @@
   python -m venv .venv
   ./.venv/Script/activate
   ```
+  **注：如果在执行第二条指令时出现禁止使用脚本的报错，请尝试以下命令解锁权限**
+  ```bash
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+  ***
+  
 
 
 - 4. 第四步，安装依赖库
   ```bash
   pip install -r ./requirements.txt
   ```
+
+***
+  - 注：已经实装了自动下载driver功能，可以直接跳过五到七步，如果出现报错，再按照这几步手动下载
+***
 
 
 - 5. 第五步，查看浏览器版本（目前只支持edge浏览器）：

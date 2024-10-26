@@ -58,6 +58,7 @@ class MyScript():
                 print(f'{e}')
                 print(f'出现错误')
                 print('\n\n')
+                # time.sleep(1000000)
         print(f'共观看了{self.mp4}个视频')
         print(f'共观看了{self.pptx}个ppt')
 
@@ -66,6 +67,7 @@ class MyScript():
         options = webdriver.EdgeOptions()
         # 忽略证书警告
         options.add_argument('--ignore-certificate-errors')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
         # 不显示网站页面（后台静默运行）
         if not show_web_page:
             options.add_argument('--headless')
@@ -97,7 +99,6 @@ class MyScript():
                 return None
 
 
-
     def download_driver_zip(self,version:str) -> str:
         '''
         下载特定版本的driver，返回保存的路径
@@ -116,6 +117,7 @@ class MyScript():
         except:
             print(f'driver下载失败！')
             return ''
+
 
     def unzip_file(self,zip_path:str) -> bool:
         '''
@@ -162,13 +164,23 @@ class MyScript():
             return input('请输入密码：')
         
         
-
-
-
     def login(self,driver:DriverType,wait:WaitType) -> None:
         driver.get(url=URL)
+
+        # 点击不再提示分辨率问题
+        input1 = wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR,'label.css-1k979oh > span > input'))
+        )
+        input1.click()
+
+        button = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR,'button.css-1k979oh'))
+        )
+        button.click()
+
+
+        # 最大化窗口
         driver.maximize_window()
-        
 
         # 通过 ID 定位到 "统一身份认证" 标签项
         unified_identity_tab = wait.until(
@@ -260,14 +272,28 @@ class MyScript():
         完成后不会返回主界面
         '''
 
-        #点击作业任务
-        homework_task = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//li[@class='ant-menu-item ta_group_sider_item' and span[text()='作业任务']]"))
-        )
-        homework_task.click()
+        # 点击作业任务,可能需要先点击展开
+        try:
+            homework_task = wait.until(
+                EC.presence_of_element_located((By.XPATH, "//li[@class='ant-menu-item ta_group_sider_item' and span[text()='作业任务']]"))
+            )
+            homework_task.click()
+        except:
+            # 展开
+            button = wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR,'i.trigger'))
+            )
+            button.click()
+
+            # 再重新尝试点击
+            homework_task = wait.until(
+                EC.presence_of_element_located((By.XPATH, "//li[@class='ant-menu-item ta_group_sider_item' and span[text()='作业任务']]"))
+            )
+            homework_task.click()
 
 
-        #点击仅关注未完成任务
+
+        # 点击仅关注未完成任务
         undown_task = wait.until(
             EC.presence_of_element_located((By.XPATH, "//input[@class='ant-checkbox-input']"))
         )
