@@ -4,9 +4,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.edge.service import Service
+from selenium.common.exceptions import WebDriverException
 import keyring
 import time
+import os
 from typing import *
+import requests
+from tqdm import tqdm
+import zipfile
+
+
 DriverType = TypeVar('DriverType', bound=webdriver.Edge)
 WaitType = TypeVar('WaitType',bound=WebDriverWait)
 
@@ -23,7 +30,9 @@ remember_password = False
 # 4.点击“关于Microsoft Edge”。
 # 5.浏览器会自动打开一个新的标签页，显示版本信息，如：版本 130.0.2849.46 (正式版本) (64 位)。
 # 接下来请进入网站https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver，下载对应版本浏览器驱动（一个msedgedriver.exe文件），并将下面的地址换成你的exe文件的地址
-DRIVER_PATH = r'C:\Users\19722\Desktop\Coding\Languages\Python\msedgedriver.exe'
+
+working_path = os.path.dirname(__file__)
+DRIVER_PATH = os.path.join(working_path,'driver','msedgedriver.exe')
 
 
 
@@ -38,29 +47,94 @@ class MyScript():
     def __init__(self):
         self.mp4 = 0
         self.pptx = 0
-        edge_options = webdriver.EdgeOptions()
-        #忽略证书警告
-        edge_options.add_argument('--ignore-certificate-errors')
-        #不显示网站页面（后台静默运行）
-        if not show_web_page:
-            edge_options.add_argument('--headless')
-            edge_options.add_argument('--disable-gpu')
-        #网站静音
-        edge_options.add_argument("--mute-audio")
-        service = Service(executable_path=DRIVER_PATH)
-
-        driver = webdriver.Edge(options=edge_options,service=service)
-        wait = WebDriverWait(driver, 10)
-        try:
-            print(f'正在登录中……')
-            self.login(driver=driver,wait=wait)
-            self.do_courses(driver=driver,wait=wait)
-        except Exception as e:
-            print(f'{e}')
-            print(f'出现错误')
-            print('\n\n')
+        driver = self.get_driver()
+        if driver:
+            wait = WebDriverWait(driver, 10)
+            try:
+                print(f'正在登录中……')
+                self.login(driver=driver,wait=wait)
+                self.do_courses(driver=driver,wait=wait)
+            except Exception as e:
+                print(f'{e}')
+                print(f'出现错误')
+                print('\n\n')
         print(f'共观看了{self.mp4}个视频')
         print(f'共观看了{self.pptx}个ppt')
+
+    
+    def get_driver(self) -> DriverType:
+        options = webdriver.EdgeOptions()
+        # 忽略证书警告
+        options.add_argument('--ignore-certificate-errors')
+        # 不显示网站页面（后台静默运行）
+        if not show_web_page:
+            options.add_argument('--headless')
+            options.add_argument('--disable-gpu')
+        # 网站静音
+        options.add_argument("--mute-audio")
+        service = Service(executable_path=DRIVER_PATH)
+
+        # 检查driver文件夹是否存在
+        if not os.path.exists(os.path.dirname(DRIVER_PATH)):
+            os.makedirs(os.path.dirname(DRIVER_PATH))
+        
+        try:
+            # 检查是否存在基础的driver文件,没有则随便下载一个
+            if not os.path.exists(DRIVER_PATH):
+                save_path = self.download_driver_zip('130.0.2849.56')
+                self.unzip_file(zip_path=save_path)
+            driver = webdriver.Edge(service=service,options=options)
+            return driver
+        except WebDriverException as e:
+            version = e.msg.split()[-7]
+            save_path = self.download_driver_zip(version)
+            self.unzip_file(zip_path=save_path)
+
+            try:
+                driver = webdriver.Edge(service=service,options=options)
+                return driver
+            except:
+                return None
+
+
+
+    def download_driver_zip(self,version:str) -> str:
+        '''
+        下载特定版本的driver，返回保存的路径
+        '''
+        driver_url = f'https://msedgedriver.azureedge.net/{version}/edgedriver_win64.zip'
+        save_path = os.path.join(os.path.dirname(DRIVER_PATH),'download_driver.zip')
+
+        try:
+            response = requests.get(url=driver_url,stream=True)
+            with open(file=save_path,mode='wb') as f:
+                for chunk in tqdm(response.iter_content(chunk_size=1024),desc="下载driver中……"):
+                    if chunk:
+                        f.write(chunk)
+            print(f'driver下载成功！')
+            return save_path
+        except:
+            print(f'driver下载失败！')
+            return ''
+
+    def unzip_file(self,zip_path:str) -> bool:
+        '''
+        解压文件，返回状态值
+        '''
+        print(f'解压driver中……')
+        if not os.path.exists(zip_path):
+            print(f'解压失败！')
+            return False
+        
+        try:
+            with zipfile.ZipFile(zip_path,'r') as zip_ref:
+                zip_ref.extract(member='msedgedriver.exe',path=os.path.dirname(zip_path))
+            print(f'解压成功！')
+            os.remove(zip_path)
+            return True
+        except:
+            print(f'解压失败！')
+            return False
 
 
     @staticmethod
