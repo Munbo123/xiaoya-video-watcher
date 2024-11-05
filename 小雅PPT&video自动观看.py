@@ -22,7 +22,7 @@ WaitType = TypeVar('WaitType',bound=WebDriverWait)
 # 是否显示界面，如果为True,则显示，如果为False，则不显示
 show_web_page = True
 # 是否记住账号密码，若为True,在第一次输入后会自动记住，下一次无需输入，若为False，则每次都需要输入账号密码
-remember_password = False
+remember_password = True
 # 你的浏览器驱动地址，目前只支持edge浏览器，请先根据以下操作查看浏览器版本
 # 1.打开Edge浏览器。
 # 2.点击右上角的三个点（更多操作）。
@@ -146,30 +146,26 @@ class MyScript():
 
 
     @staticmethod
-    def get_username():
-        if remember_password:
-            username = keyring.get_password(service_name=SERVICE_NAME,username='username')
-            if username==None:
-                username = input('请输入用户名：')
-                keyring.set_password(service_name=SERVICE_NAME,username='username',password=username)
-            return username
-        else:
-            return input('请输入用户名：')
-
+    def save_credentials(username, password):
+        keyring.set_password(SERVICE_NAME, 'username', username)
+        keyring.set_password(SERVICE_NAME, username, password)
 
     @staticmethod
-    def get_password():
-        if remember_password:
-            username = MyScript.get_username()
-            password = keyring.get_password(service_name=SERVICE_NAME,username=f'{username}')
-            if password==None:
-                password = input('请输入密码：')
-                keyring.set_password(service_name=SERVICE_NAME,username=username,password=password)
-            return password
-        else:
-            return input('请输入密码：')
+    def get_saved_username():
+        return keyring.get_password(SERVICE_NAME, 'username')
+
+    @staticmethod
+    def get_saved_password(username):
+        return keyring.get_password(SERVICE_NAME, username)
+
+    def delete_saved_credentials(self):
+        saved_username = self.get_saved_username()
+        if saved_username:
+            keyring.delete_password(SERVICE_NAME, saved_username)
+        keyring.delete_password(SERVICE_NAME, 'username')
         
         
+
     def login(self,driver:DriverType,wait:WaitType) -> None:
         driver.get(url=URL)
 
@@ -202,11 +198,25 @@ class MyScript():
         login_button.click()
 
 
+        if remember_password:
+            username = MyScript.get_saved_username()
+            password = MyScript.get_saved_password(username)
+            if not (username and password):
+                username = input('请输入用户名：')
+                password = input('请输入密码：')
+                self.delete_saved_credentials()
+                MyScript.save_credentials(username=username,password=password)
+        else:
+            username = input('请输入用户名：')
+            password = input('请输入密码：')
+            self.delete_saved_credentials()
+            MyScript.save_credentials(username=username,password=password)
+
         # 输入账号
         username_input = wait.until(
             EC.visibility_of_element_located((By.ID, 'un'))
         )
-        username_input.send_keys(f'{MyScript.get_username()}')
+        username_input.send_keys(f'{username}')
 
 
 
@@ -214,7 +224,7 @@ class MyScript():
         password_input = wait.until(
             EC.visibility_of_element_located((By.ID, 'pd'))
         )
-        password_input.send_keys(f'{MyScript.get_password()}')
+        password_input.send_keys(f'{password}')
 
 
         #登录
@@ -264,12 +274,12 @@ class MyScript():
 
             course_num+=1
             # 当前课程指向超过本页课程数量，则跳出循环
-            if course_num>=len(courses):
-                break       
             if course_num==8:
                 course_num = 0
                 page_num+=1
 
+            if page_num>=len(pages) or course_num>=len(courses):
+                break  
 
     def do_tasks(self,driver:DriverType,wait:WaitType) -> None:
         '''
@@ -298,19 +308,22 @@ class MyScript():
             homework_task.click()
 
 
-
-        # 点击仅关注未完成任务
-        undown_task = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//input[@class='ant-checkbox-input']"))
-        )
-        undown_task.click()
-
-
         # 点击自主观看
         self_watch = wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR,'.ant-tabs-nav-animated > :nth-child(1) > :nth-child(2)'))
         )
         self_watch.click()
+
+        # 选中时：<input type="checkbox" class="ant-checkbox-input" value="" checked="">
+        # 空白时：<input type="checkbox" class="ant-checkbox-input" value="">
+
+        # 点击仅关注未完成任务
+        undown_task = wait.until(
+            EC.presence_of_element_located((By.XPATH, "//input[@class='ant-checkbox-input']"))
+        )
+
+        if not undown_task.get_attribute('checked'):
+            undown_task.click()
         
 
         #如果有每页显示选项，说明有任务，否则就是没任务，退出
@@ -345,10 +358,10 @@ class MyScript():
                     if f'{task_name}' in driver.title:
                         break
                 # 完成观看任务
-                if '.mp4' in task_name:
+                if '.mp4' in task_name or '.flv' in task_name:
                     self.watch_video(driver=driver,wait=wait,video_name=task_name)
                 elif '.pptx' in task_name:
-                    self.watch_pptx(driver=driver,wait=wait)
+                    self.watch_pptx(driver=driver,wait=wait,task_name=task_name)
                 else:
                     print(f'无法识别的类型')
                 
@@ -388,9 +401,20 @@ class MyScript():
 
         # 监测完成进度，当完成进度达到100%时退出
         while progressing.text != f'已观看:100%':
+            action.move_to_element(progress_marker)
+            xoffset = (progress_marker.size['width']/2)-5
+            action.move_by_offset(xoffset=-xoffset,yoffset=0)
+            action.click()
+            time.sleep(1)
+            action.move_to_element(progress_marker)
+            xoffset = (progress_marker.size['width']/2)-5
+            action.move_by_offset(xoffset=xoffset,yoffset=0)
+            action.click()
+            action.perform()
             print(f'正在观看{video_name} {progressing.text}')
             time.sleep(1)
         
+
         # 点击完成任务
         task_down = wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR,'.btn_content'))
@@ -399,12 +423,26 @@ class MyScript():
         self.mp4+=1
 
 
-    def watch_pptx(self,driver=DriverType,wait=WaitType) -> None:
+    def watch_pptx(self,driver=DriverType,wait=WaitType,task_name:str='') -> None:
         '''
         要求当前已经切换到pptx页面中,完成任务后不会关闭页面
-        懒得做了，下次再做
         '''
-        pass
+
+        while True:
+            task_down = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR,'.btn_content'))
+            )
+            task_down.click()
+            try:
+                button = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR,'button.ant-btn-primary'))
+                )
+                button.click()
+            except:
+                break
+            time.sleep(1)
+            print(f'正在观看：{task_name}')
+        
         self.pptx+=1
 
 
