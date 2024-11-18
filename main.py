@@ -8,6 +8,8 @@ import keyring
 import requests
 from tqdm import tqdm
 from pprint import pprint
+import tkinter as tk
+from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,12 +17,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.edge.service import Service
 from selenium.common.exceptions import WebDriverException
-
-
-
-
-
-
 
 
 # 是否显示界面，如果为True,则显示，如果为False，则不显示
@@ -37,38 +33,33 @@ else:
 DRIVER_PATH = os.path.join(working_path,'driver','msedgedriver.exe')
 
 
-
 # 定义常量
 SERVICE_NAME = 'MyApp'
 URL = r'https://whut.ai-augmented.com/app/jx-web/mycourse'
 
+
 class User():
     def __init__(self,remember,service_name='MyApp'):
-        # 记住密码
-        if remember:
+        if remember:    # 记住密码
             username = keyring.get_password(service_name,'username')
-            # 密码存在
-            if username:
+            if username:        # 密码存在
                 self.username = username
                 self.password = keyring.get_password(service_name,username)
-            # 密码不存在，输入并保存
-            else:
+            else:       # 密码不存在，输入并保存
                 self.username = input("请输入用户名：")
                 self.password = input("请输入密码：")
                 keyring.set_password(service_name,self.username,self.password)
                 keyring.set_password(service_name,'username',self.username)
-        # 不记住密码
-        else:
+        else:        # 不记住密码
             self.username = input("请输入用户名：")
             self.password = input("请输入密码：")
             username = keyring.get_password(service_name,'username')
-            # 密码存在，清除密码
-            if username:
+            if username:        # 密码存在，清除密码
                 keyring.delete_password(service_name,username)
                 keyring.delete_password(service_name,'username')
-            # 密码不存在，什么都不需要做
-            else:
+            else:               # 密码不存在，什么都不需要做
                 pass
+
 
 class MyDriver():
     def __init__(self,working_path,show_web_page=True):
@@ -146,18 +137,15 @@ class MyDriver():
         os.remove(zip_path)
 
 
-
-
-class xiaoya_scrpit():
-    def __init__(self):
+class Xiaoya_scrpit():
+    def __init__(self,user:User):
         self.HomeworkDict = {}
         driver1 = MyDriver(working_path=working_path,show_web_page=show_web_page)
-        self.login(driver1)
+        self.login(driver1,user)
         self.ApplyTask(driver1)
-        pprint(self.HomeworkDict)
 
 
-    def login(self,driver1:MyDriver):
+    def login(self,driver1:MyDriver,user1:User):
         # 获取wait，driver和url
         driver = driver1.driver
         wait = WebDriverWait(driver, 10)
@@ -195,9 +183,6 @@ class xiaoya_scrpit():
             EC.element_to_be_clickable((By.NAME, 'password'))
         )
         login_button.click()
-
-        # 初始化用户对象，存储了账号密码
-        user1 = User(remember=remember_password,service_name=SERVICE_NAME)
 
 
         # 输入账号
@@ -268,8 +253,10 @@ class xiaoya_scrpit():
             # 主要执行任务的部分
             if instructor==1:
                 self.AllTaskName(driver1,NameTag.text)
+                pprint(self.HomeworkDict)
             elif instructor==2:
-                self.do_tasks(driver1)
+                if self.AllTaskName(driver1,NameTag.text):
+                    self.Finish_Task(driver1)
             else:
                 print(f'无效的指令')
 
@@ -288,7 +275,7 @@ class xiaoya_scrpit():
 
     def AllTaskName(self,driver1:MyDriver,CourseName):
         '''
-        打印所有需要完成的任务
+        打印所有需要完成的任务(已经点进对应课程了)
         '''
         driver = driver1.driver
         wait = WebDriverWait(driver, 10)
@@ -350,7 +337,6 @@ class xiaoya_scrpit():
                 self.HomeworkDict[CourseName] = self.HomeworkDict.get(CourseName,[])+[task_name]
                 flag = False
                 # 回到任务界面，并继续循环，直到任务全部完成
-                driver.close()
                 driver.switch_to.window(main_handle)
                 count+=1
         else:   # 没有任务
@@ -359,180 +345,125 @@ class xiaoya_scrpit():
 
         if flag:
             print(f'\t\033[32m本课程暂时没有任务\033[0m')     # 绿色
+            return False
+        else:
+            return True
 
 
-
-    def do_tasks(self,driver1:MyDriver):
+    def Finish_Task(self,driver1:MyDriver):
         '''
         完成课程界面的所有任务
-        要求已经进入课程页面
-        完成后不会返回主界面
         '''
         driver = driver1.driver
         wait = WebDriverWait(driver, 10)
-        # 点击作业任务,可能需要先点击展开
-        try:
-            homework_task = wait.until(
-                EC.presence_of_element_located((By.XPATH, "//li[@class='ant-menu-item ta_group_sider_item' and span[text()='作业任务']]"))
-            )
-            homework_task.click()
-        except:
-            # 展开
-            button = wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR,'i.trigger'))
-            )
-            button.click()
 
-            # 再重新尝试点击
-            homework_task = wait.until(
-                EC.presence_of_element_located((By.XPATH, "//li[@class='ant-menu-item ta_group_sider_item' and span[text()='作业任务']]"))
-            )
-            homework_task.click()
+        # 获取课程编号
+        url = driver.current_url
+        group_id = str(url.split('/')[-2])  # 去掉可能存在的查询参数
 
+        # 获取所有的cookies
+        cookies = driver.get_cookies()
 
-        # 点击自主观看
-        self_watch = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR,'.ant-tabs-nav-animated > :nth-child(1) > :nth-child(2)'))
-        )
-        self_watch.click()
-
-        # 选中时：<input type="checkbox" class="ant-checkbox-input" value="" checked="">
-        # 空白时：<input type="checkbox" class="ant-checkbox-input" value="">
-
-        # 点击仅关注未完成任务
-        undown_task = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//input[@class='ant-checkbox-input']"))
-        )
-
-        if not undown_task.get_attribute('checked'):
-            undown_task.click()
-        
-
-        #如果有每页显示选项，说明有任务，否则就是没任务，退出
-        message_per_page_button = driver.find_elements(by=By.CSS_SELECTOR,value='.ant-select-selection')
-        if message_per_page_button:
-            #点击每页显示的选项
-            message_per_page = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR,'.ant-select-selection'))
-            )
-            message_per_page.click()
-
-            #点击显示两百条
-            button1 = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR,'ul.ant-select-dropdown-menu > li:nth-child(5)'))
-            )
-            button1.click()
-
-            count = 0
-            main_handle = driver.current_window_handle
-
-            tasks = driver.find_elements(by=By.CSS_SELECTOR,value='tr.ant-table-row-level-0 span span')
-            while count<len(tasks):
-                tasks = driver.find_elements(by=By.CSS_SELECTOR,value='tr.ant-table-row-level-0 span span')
-                task_name = tasks[count].text
-                tasks[count].click()
-                count+=1
-                #切换到视频页面
-                handles = driver.window_handles
-                for handle in handles:
-                    driver.switch_to.window(handle)
-                    time.sleep(2)
-                    if f'{task_name}' in driver.title:
-                        break
-                # 完成观看任务
-                if '.mp4' in task_name or '.flv' in task_name:
-                    self.watch_video(driver=driver,wait=wait,video_name=task_name)
-                elif '.pptx' in task_name:
-                    self.watch_pptx(driver=driver,wait=wait,task_name=task_name)
-                else:
-                    print(f'无法识别的类型')
-                
-                # 回到任务界面，并继续循环，直到任务全部完成
-                driver.close()
-                driver.switch_to.window(main_handle)
-
-
-    def watch_video(self,driver1,video_name='') -> None:
-        '''
-        要求当前已经切换到video页面中,完成任务后不会关闭页面
-        '''
-        driver = driver1.driver
-        wait = WebDriverWait(driver, 10)
-        # 开始播放视频
-        video_start = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR,'.outter'))
-        )
-        video_start.click()
-
-
-        # 找到进度条游标
-        progress_marker = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".prism-player  .prism-progress"))
-        )
-
-        # 把视频拨到起始位置
-        action = ActionChains(driver)
-        action.move_to_element(progress_marker)
-        xoffset = (progress_marker.size['width']/2)-5
-        action.move_by_offset(xoffset=-xoffset,yoffset=0)
-        action.click()
-        action.perform()
-
-        # 找到显示进度的文本
-        progressing = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".progress_container > span"))
-        )
-
-        # 监测完成进度，当完成进度达到100%时退出
-        while progressing.text != f'已观看:100%':
-            action.move_to_element(progress_marker)
-            xoffset = (progress_marker.size['width']/2)-5
-            action.move_by_offset(xoffset=-xoffset,yoffset=0)
-            action.click()
-            time.sleep(1)
-            action.move_to_element(progress_marker)
-            xoffset = (progress_marker.size['width']/2)-5
-            action.move_by_offset(xoffset=xoffset,yoffset=0)
-            action.click()
-            action.perform()
-            print(f'正在观看{video_name} {progressing.text}')
-            time.sleep(1)
-        
-
-        # 点击完成任务
-        task_down = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR,'.btn_content'))
-        )
-        task_down.click()
-        self.mp4+=1
-
-
-    def watch_pptx(self,driver1,task_name:str='') -> None:
-        '''
-        要求当前已经切换到pptx页面中,完成任务后不会关闭页面
-        '''
-        driver = driver1.driver
-        wait = WebDriverWait(driver, 10)
-        while True:
-            task_down = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR,'.btn_content'))
-            )
-            task_down.click()
-            try:
-                button = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR,'button.ant-btn-primary'))
-                )
-                button.click()
-            except:
+        # 查找特定的cookie
+        token = None
+        for cookie in cookies:
+            if cookie['name'] == 'WT-prd-access-token':
+                token = cookie['value']
                 break
-            time.sleep(1)
-            print(f'正在观看：{task_name}')
+
+        if token==None:
+            token = input("token获取失败,请输入手动输入token: ") or os.environ.get("DEV_TOKEN")  # 获取token
+
+        # 提交数据以完成自主观看任务
+        endpoint = "https://whut.ai-augmented.com/api/jx-iresource/"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+
+
+        url = f"{endpoint}resource/queryCourseResources?group_id={group_id}"  # 获取课程资源
+        course_jobs = requests.get(url=url, headers=headers).json()["data"]
+        if len(course_jobs)==0:
+            print(f'该课程没有任何任务！')
+
+        red_font = "\033[31m"
+        green_font = "\033[32m"
+        yellow_font = "\033[33m"
+        blue_font = "\033[34m"
+        magenta_font = "\033[35m"
+        cyan_font = "\033[36m"
+        orange_font = "\033[33m"
+        reset_font = "\033[0m"
+
+        for job in course_jobs:  # 遍历课程任务
+            node_id = job["id"]  # 任务ID，在链接的最尾部
+            job_type = job["type"]  # 任务类型
+            name = job["name"]
+            is_task = job["is_task"]
+
         
-        self.pptx+=1
+            if is_task:     # 是任务的话
+                if job_type == 9:  # 9=视频
+                    url = f"{endpoint}resource/task/studenFinishInfo?group_id={group_id}&node_id={node_id}"
+                    assign_id = requests.get(url=url, headers=headers).json()[
+                        "data"]["assign_id"]
+
+                    url = f"{endpoint}resource/queryResource?node_id={node_id}"
+                    result = requests.get(url=url, headers=headers).json()["data"]
+                    quote_id = result["quote_id"]
+                    media_id = result["resource"]["id"]
+                    duration = result["resource"]["duration"]
+                    task_id = result["task_id"]
+
+                    data = {
+                        "video_id": "0000000000000000000",  # 似乎不重要
+                        "played": duration,
+                        "media_type": 1,
+                        "duration": duration,
+                        "watched_duration": duration
+                    }
+                    url = f"{endpoint}vod/duration/{quote_id}"  # 提交视频观看时长
+                    result = requests.post(url=url, headers=headers, json=data)
+
+                    url = f"{endpoint}vod/checkTaskStatus"  # 完成视频任务
+                    data = {
+                        "group_id": group_id,
+                        "media_id": media_id,
+                        "task_id": task_id,
+                        "assign_id": assign_id
+                    }
+
+                    result = requests.post(url=url, headers=headers, json=data).json()
+                    if result['success']:
+                        print(f"{name}\n\t{green_font}成功{result}{reset_font}")
+                    else:
+                        print(f"{name}\n\t{red_font}失败{result}{reset_font}")
+
+                elif job_type == 6:  # 6=文档
+                    task_id = job["task_id"]
+
+                    url = f"{endpoint}resource/finishActivity"
+                    data = {
+                        "group_id": group_id,
+                        "task_id": task_id,
+                        "node_id": node_id
+                    }
+                    result = requests.post(url=url, headers=headers, json=data).json()
+                    if result['success']:
+                        print(f"{name}\n\t{green_font}成功{result}{reset_font}")
+                    else:
+                        print(f"{name}\n\t{red_font}失败{result}{reset_font}")
+
+
+                else:
+                    print(f"{name}\n\t{yellow_font}未知类型，跳过{reset_font}")
+            else:           #不是任务（比如老师上传的ppt，视频，但没布置成作业的
+                pass
 
 
 
 
 if __name__ == '__main__':
-    task1 = xiaoya_scrpit()
+    task1 = Xiaoya_scrpit()
     os.system('pause')
