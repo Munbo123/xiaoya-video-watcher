@@ -8,26 +8,16 @@ import keyring
 import tkinter as tk
 from tkinter import scrolledtext
 
-from MyDriver import MyDriver
-from User import User
-from Xiaoya_Script import Xiaoya_scrpit
+from src.User import User
+from src.Xiaoya_Script import Xiaoya_scrpit
 
 
-# 获取工作路径
-if hasattr(sys,'_MEIPASS'):
-    working_path = os.getcwd()
-else:
-    working_path = os.path.dirname(__file__)
-DRIVER_PATH = os.path.join(working_path,'driver','msedgedriver.exe')
 
-
-# 定义常量
-SERVICE_NAME = 'MyApp'
-
-
-class App():
-    def __init__(self): 
+class App:
+    def __init__(self,working_path:str,service_name:str): 
         self.current_user:User = None
+        self.working_path = working_path
+        self.service_name = service_name
         self.login_page()
 
 
@@ -38,18 +28,18 @@ class App():
             password = entry_password.get()
             not_show = var_not_show.get()
             if is_remember:  # 需要记住密码
-                keyring.set_password(SERVICE_NAME, 'username', username)
-                keyring.set_password(SERVICE_NAME, username, password)
+                keyring.set_password(self.service_name, 'username', username)
+                keyring.set_password(self.service_name, username, password)
             else:  # 不需要记住密码，则应该清空存储的密码
-                temp1 = keyring.get_password(SERVICE_NAME, 'username')
+                temp1 = keyring.get_password(self.service_name, 'username')
                 if temp1:
-                    keyring.delete_password(SERVICE_NAME, temp1)
-                    keyring.delete_password(SERVICE_NAME, 'username')
+                    keyring.delete_password(self.service_name, temp1)
+                    keyring.delete_password(self.service_name, 'username')
 
             if not_show:  # 不显示界面
-                keyring.set_password(SERVICE_NAME, 'show', 'yes')
+                keyring.set_password(self.service_name, 'show', 'yes')
             else:  # 要显示界面
-                keyring.set_password(SERVICE_NAME, 'show', 'no')
+                keyring.set_password(self.service_name, 'show', 'no')
 
             self.current_user = User(username, password, not_show)
             self.main_page()
@@ -75,22 +65,22 @@ class App():
         # 创建记住密码复选框
         var_remember = tk.BooleanVar()
         check_remember = tk.Checkbutton(frame1, text="记住密码", variable=var_remember, font=font)
-        if keyring.get_password(service_name=SERVICE_NAME, username='username') is None:
+        if keyring.get_password(service_name=self.service_name, username='username') is None:
             var_remember.set(False)
         else:
             var_remember.set(True)
-            username = keyring.get_password(SERVICE_NAME, 'username')
-            password = keyring.get_password(SERVICE_NAME, username)
+            username = keyring.get_password(self.service_name, 'username')
+            password = keyring.get_password(self.service_name, username)
             entry_username.insert(0, username)
             entry_password.insert(0, password)
 
         # 创建是否显示web界面复选框
         var_not_show = tk.BooleanVar()
         check_not_show = tk.Checkbutton(frame1, text="不显示web界面", variable=var_not_show, font=font)
-        if keyring.get_password(service_name=SERVICE_NAME, username='show') is None:
+        if keyring.get_password(service_name=self.service_name, username='show') is None:
             var_not_show.set(False)
         else:
-            if keyring.get_password(service_name=SERVICE_NAME, username='show') == 'yes':
+            if keyring.get_password(service_name=self.service_name, username='show') == 'yes':
                 var_not_show.set(True)
             else:
                 var_not_show.set(False)
@@ -137,7 +127,7 @@ class App():
         self.output.pack(pady=20)
   
         
-        self.xiaoya = Xiaoya_scrpit(working_path=working_path,output=self.output)
+        self.xiaoya = Xiaoya_scrpit(working_path=self.working_path,output=self.output)
         # 登录,开新的线程，防止阻塞主界面的形成
         threading.Thread(target=self.xiaoya.login, args=(self.current_user.username,self.current_user.password,self.current_user.show_page)).start()
         

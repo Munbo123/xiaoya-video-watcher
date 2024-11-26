@@ -15,7 +15,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.edge.service import Service
 from selenium.common.exceptions import WebDriverException
 
-from MyDriver import MyDriver
+from src.MyDriver import MyDriver
 
 
 class Xiaoya_scrpit():
