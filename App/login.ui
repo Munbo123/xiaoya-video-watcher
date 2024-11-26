@@ -20,15 +20,15 @@
    <string>登录</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QLabel" name="label">
+   <widget class="QLabel" name="label1">
     <property name="enabled">
      <bool>true</bool>
     </property>
     <property name="geometry">
      <rect>
-      <x>170</x>
+      <x>160</x>
       <y>90</y>
-      <width>101</width>
+      <width>111</width>
       <height>61</height>
      </rect>
     </property>
@@ -42,10 +42,10 @@
      <string>用户名：</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_2">
+   <widget class="QLabel" name="label2">
     <property name="geometry">
      <rect>
-      <x>170</x>
+      <x>160</x>
       <y>150</y>
       <width>101</width>
       <height>61</height>
@@ -61,7 +61,7 @@
      <string>密码：</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="username">
+   <widget class="QLineEdit" name="username_input">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -73,11 +73,11 @@
     <property name="font">
      <font>
       <family>黑体</family>
-      <pointsize>14</pointsize>
+      <pointsize>10</pointsize>
      </font>
     </property>
    </widget>
-   <widget class="QLineEdit" name="password">
+   <widget class="QLineEdit" name="password_input">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -89,19 +89,19 @@
     <property name="font">
      <font>
       <family>黑体</family>
-      <pointsize>14</pointsize>
+      <pointsize>7</pointsize>
      </font>
     </property>
     <property name="echoMode">
      <enum>QLineEdit::Password</enum>
     </property>
    </widget>
-   <widget class="QCheckBox" name="remember">
+   <widget class="QCheckBox" name="remember_checkbox">
     <property name="geometry">
      <rect>
-      <x>190</x>
+      <x>170</x>
       <y>240</y>
-      <width>101</width>
+      <width>131</width>
       <height>31</height>
      </rect>
     </property>
@@ -121,7 +121,7 @@
      </size>
     </property>
    </widget>
-   <widget class="QCheckBox" name="not_show_page">
+   <widget class="QCheckBox" name="show_web_checkbox">
     <property name="geometry">
      <rect>
       <x>320</x>
@@ -140,7 +140,7 @@
      <string>不显示web界面</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="login">
+   <widget class="QPushButton" name="login_button">
     <property name="geometry">
      <rect>
       <x>270</x>
